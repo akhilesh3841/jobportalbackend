@@ -45,10 +45,6 @@ const jobSchema = new mongoose.Schema({
     title: String,
     url: String
   },
-  jobNiche: {
-    type: String,
-    required: true,
-  },
   newsLettersSent: {
     type: Boolean,
     default: false,

@@ -1,9 +1,9 @@
-import { catchAsyncErrors } from "../middlewares/catchAsyncErrors.js";
-import ErrorHandler  from "../middlewares/error.js";
+
 import {User} from "../models/userSchema.js"
 import { Job } from "../models/jobSchema.js";
 
-export const postJob = catchAsyncErrors(async (req, res, next) => {
+export const postJob = async (req, res) => {
+  try {
     const {
       title,
       jobType,
@@ -19,6 +19,7 @@ export const postJob = catchAsyncErrors(async (req, res, next) => {
       personalWebsiteUrl,
       jobNiche,
     } = req.body;
+
     if (
       !title ||
       !jobType ||
@@ -27,25 +28,22 @@ export const postJob = catchAsyncErrors(async (req, res, next) => {
       !introduction ||
       !responsibilities ||
       !qualifications ||
-      !salary ||
-      !jobNiche
+      !salary
     ) {
-      return next(new ErrorHandler("Please provide full job details.", 400));
+      return res.status(400).json({ message: "Please provide full job details." });
     }
+
     if (
       (personalWebsiteTitle && !personalWebsiteUrl) ||
       (!personalWebsiteTitle && personalWebsiteUrl)
     ) {
-      return next(
-        new ErrorHandler(
-          "Provide both the website url and title, or leave both blank.",
-          400
-        )
-      );
+      return res.status(400).json({
+        message: "Provide both the website URL and title, or leave both blank.",
+      });
     }
 
-
     const postedBy = req.user._id;
+
     const job = await Job.create({
       title,
       jobType,
@@ -64,18 +62,23 @@ export const postJob = catchAsyncErrors(async (req, res, next) => {
       jobNiche,
       postedBy,
     });
+
     res.status(201).json({
-      success: true,
       message: "Job posted successfully.",
       job,
     });
-  });
+
+  } catch (error) {
+    res.status(500).json({
+      message: error.message,
+    });
+  }
+};
 
 
 
 
-
-  export const getAllJobs = catchAsyncErrors(async (req, res, next) => {
+  export const getAllJobs = async (req, res) => {
     const { city, niche, searchKeyword } = req.query;
     const query = {};
     if (city) {
@@ -93,44 +96,39 @@ export const postJob = catchAsyncErrors(async (req, res, next) => {
     }
     const jobs = await Job.find(query);
     res.status(200).json({
-      success: true,
-      jobs,
-      count: jobs.length,
+      data:jobs,
     });
-  });
+  };
   
   
-  export const getMyJobs = catchAsyncErrors(async (req, res, next) => {
+  export const getMyJobs = async (req, res) => {
     const myJobs = await Job.find({ postedBy: req.user._id });
     res.status(200).json({
-      success: true,
-      myJobs,
+      data:myJobs,
     });
-  });
+  };
 
 
-  export const deleteJob = catchAsyncErrors(async (req, res, next) => {
+
+export const deleteJob = async (req, res) => {
+  try {
     const { id } = req.params;
+
     const job = await Job.findById(id);
     if (!job) {
-      return next(new ErrorHandler("Oops! Job not found.", 404));
+      return res.status(404).json({
+          message: "Oops! Job not found.",
+      });
     }
+
     await job.deleteOne();
+
     res.status(200).json({
-      success: true,
       message: "Job deleted.",
     });
-  });
-  
-
-  export const getASingleJob = catchAsyncErrors(async (req, res, next) => {
-    const { id } = req.params;
-    const job = await Job.findById(id);
-    if (!job) {
-      return next(new ErrorHandler("Job not found.", 404));
-    }
-    res.status(200).json({
-      success: true,
-      job,
+  } catch (error) {
+    res.status(500).json({
+      message: error.message || "Something went wrong.",
     });
-  });
+  }
+};

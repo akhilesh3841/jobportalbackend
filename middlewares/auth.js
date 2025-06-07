@@ -1,24 +1,37 @@
-import { catchAsyncErrors } from "./catchAsyncErrors.js";
-import ErrorHandler from "./error.js";
+
 import jwt from "jsonwebtoken";
 import { User } from "../models/userSchema.js";
 
-export const isauthenticated =catchAsyncErrors(async(req,resizeBy,next)=>{
+export const isauthenticated =async(req,res,next)=>{
+    try {
     const {token}=req.cookies;
     if(!token) {
-        return next(new ErrorHandler("You are not authenticated", 401));
+       return res.status(401).json({ message: "Please Login!" });
     }
 
     const decoded=jwt.verify(token,process.env.JWT_SECRET_KEY);
-    req.user=await User.findById(decoded.id);
+    const { _id }=decoded;
+
+    const user=await User.findById(_id);
+    if(!user) {
+       return res.status(401).json({ message: "User not found" });
+    }
+
+    req.user=user;//attach user object to req
     next();
-});
+        
+    } catch (error) {
+     res.status(401).json({ message: "Authentication failed: " + error.message });   
+    }
+};
 
 export const isAuthorized = (...roles) => {
-    return (req, res, next) => {
-        if (!roles.includes(req.user.role)) {
-            return next(new ErrorHandler("You are not authorized to access this resource", 403));
-        }
-        next(); // Move inside and only execute if user is authorized
-    };
+  return (req, res, next) => {
+    if (!roles.includes(req.user.role)) {
+      return res.status(403).json({
+        message: `${req.user.role} is not authorized to access this resource.`,
+      });
+    }
+    next();
+  };
 };

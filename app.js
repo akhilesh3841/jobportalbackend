@@ -4,7 +4,6 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 const app=express();
 import {connection} from './database/connection.js';
-import {middleware} from './middlewares/error.js';
 import fileUpload from 'express-fileupload';
 import userRouter from './routes/userRouter.js';
 import jobRouter from './routes/jobRouter.js'
@@ -45,7 +44,7 @@ app.use(fileUpload({
  app.use('/api/v1/application',applicationRouter);
 
 connection();
-app.use(middleware);
+// app.use(middleware);
 
 
 

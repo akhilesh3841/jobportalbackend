@@ -28,7 +28,7 @@ const applicationSchema = new mongoose.Schema({
       public_id: String,
       url: String,
     },
-    coverLetter: {
+    coverletter: {
       type: String,
       required: true,
     },
