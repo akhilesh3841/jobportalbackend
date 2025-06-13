@@ -1,7 +1,7 @@
 import express from "express";
 import { isauthenticated,isAuthorized } from "../middlewares/auth.js";
 import {
-  postApplication,jobSeekerGetAllApplication,employerGetAllApplication,deleteApplication,
+  postApplication,jobSeekerGetAllApplication,employerGetAllApplication,
   acceptedorRejected} from "../controllers/applicationController.js";
 
 const router = express.Router();
@@ -22,6 +22,5 @@ router.get(
 
 router.post("/review/:status/:jobid/:touserid",isauthenticated,isAuthorized("Employer"),acceptedorRejected);
 
-router.delete("/delete/:id", isauthenticated, deleteApplication);
 
 export default router;

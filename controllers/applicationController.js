@@ -120,53 +120,6 @@ export const postApplication = async (req, res) => {
 };
 
 
-
-
-// export const checkstatus = async (req, res) => {
-//   try {
-//     const fromuserid = req.user._id; 
-//     const touserid = req.params.touserid;
-//     const status = req.params.status;
-
-//     const allowedStatus = ["Apply"]; // Change from "Apply" to your enum value
-//     if (!allowedStatus.includes(status)) {
-//       return res.status(400).json({ message: "Invalid status type" });
-//     }
-
-//     const touser = await User.findById(touserid);
-//     if (!touser) {
-//       return res.status(404).json({ message: "User not found" });
-//     }
-
-//     // ✅ Check if request already sent
-//     const existing = await Connectionreq.findOne({
-//       fromuserid,
-//       touserid,
-//     });
-
-//     if (existing) {
-//       return res.status(409).json({ message: "Request already sent" });
-//     }
-
-//     // ✅ Save new connection request
-//     const request = new Connectionreq({
-//       fromuserid,
-//       touserid,   // ✅ fixed typo from 'touseridd'
-//       status,
-//     });
-
-//     const data = await request.save();
-
-//     res.status(200).json({
-//       message: "Request sent successfully",
-//       data,
-//     });
-//   } catch (error) {
-//     res.status(400).send("Error: " + error.message);
-//   }
-// };
-
-
 export const acceptedorRejected = async (req, res) => {
   try {
     const { status, jobid, touserid } = req.params;
@@ -182,35 +135,38 @@ export const acceptedorRejected = async (req, res) => {
       !mongoose.Types.ObjectId.isValid(jobid) ||
       !mongoose.Types.ObjectId.isValid(touserid)
     ) {
-      return res
-        .status(400)
-        .json({ message: "Invalid Job ID or User ID." });
+      return res.status(400).json({ message: "Invalid Job ID or User ID." });
     }
 
-    // Find application
-    const application = await Application.findOne({
-      "jobInfo.jobId": jobid,
-      "jobSeekerInfo.id": touserid,
-    });
+    // Update only the status using findOneAndUpdate to avoid validation errors
+    const updatedApplication = await Application.findOneAndUpdate(
+      {
+        "jobInfo.jobId": jobid,
+        "jobSeekerInfo.id": touserid,
+      },
+      {
+        $set: {
+          "jobSeekerInfo.status": status,
+        },
+      },
+      {
+        new: true, // return the updated document
+      }
+    );
 
-    if (!application) {
+    if (!updatedApplication) {
       return res.status(404).json({ message: "Application not found" });
     }
 
-    // Update status
-    application.jobSeekerInfo.status = status;
-    const data = await application.save();
-
     return res.status(200).json({
       message: `Application ${status.toLowerCase()} successfully.`,
-      application: data,
+      application: updatedApplication,
     });
   } catch (error) {
     console.error("Error in acceptedOrRejected:", error);
     res.status(500).json({ message: "Server Error", error: error.message });
   }
 };
-
 
 export const employerGetAllApplication = async (req, res) => {
   try {
@@ -260,60 +216,3 @@ export const jobSeekerGetAllApplication = async (req, res) => {
     res.status(500).json({ message: "Server Error" });
   }
 };
-
-
-export const deleteApplication = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const application = await Application.findById(id);
-
-    if (!application) {
-      return res.status(404).json({
-        message: "Application not found.",
-      });
-    }
-
-    const { role } = req.user;
-
-    switch (role) {
-      case "Job Seeker":
-        application.deletedBy.jobSeeker = true;
-        await application.save();
-        break;
-
-      case "Employer":
-        application.deletedBy.employer = true;
-        await application.save();
-        break;
-
-      default:
-        console.log("Default case for application delete function.");
-        return res.status(400).json({
-            message: "Invalid user role.",
-        });
-    }
-
-    // If both Job Seeker and Employer have deleted
-    if (
-      application.deletedBy.employer === true &&
-      application.deletedBy.jobSeeker === true
-    ) {
-      await application.deleteOne();
-    }
-
-    res.status(200).json({
-      success: true,
-      message: "Application deleted.",
-    });
-  } catch (error) {
-    console.error("Delete Application Error:", error);
-    res.status(500).json({
-    
-      message: "Something went wrong while deleting the application.",
-    });
-  }
-};
-
-
-
-

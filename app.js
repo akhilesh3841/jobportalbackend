@@ -42,11 +42,11 @@ app.use(fileUpload({
   
 
 
- app.use('/api/v1/users',userRouter);
+ app.use('/',userRouter);
  
- app.use('/api/v1/job',jobRouter);
+ app.use('/',jobRouter);
  
- app.use('/api/v1/application',applicationRouter);
+ app.use('/',applicationRouter);
 
 connection();
 // app.use(middleware);
