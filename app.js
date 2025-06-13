@@ -9,6 +9,11 @@ import userRouter from './routes/userRouter.js';
 import jobRouter from './routes/jobRouter.js'
 import applicationRouter from './routes/applicationRouter.js'
 
+import dotenv from "dotenv";
+dotenv.config(); // Load environment variables from .env file
+
+
+
 config({ path: "./config/.env" });
 
 

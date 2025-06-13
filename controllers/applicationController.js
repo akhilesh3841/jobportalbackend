@@ -2,17 +2,18 @@
 import { Application } from "../models/applicationSchema.js";
 import { Job } from "../models/jobSchema.js";
 import { v2 as cloudinary } from "cloudinary";
+import mongoose from "mongoose";
 
-
+import dotenv from "dotenv";
+dotenv.config(); // Load environment variables from .env file
 
 
 export const postApplication = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, email, phone, address, coverletter } = req.body;
+    const { name, email, phone, address } = req.body;
 
-    // Validate required fields
-    if (!name || !email || !phone || !address || !coverletter) {
+    if (!name || !email || !phone || !address) {
       return res.status(400).json({ message: "All fields are required." });
     }
 
@@ -22,11 +23,10 @@ export const postApplication = async (req, res) => {
       email,
       phone,
       address,
-      coverletter,
       role: "Job Seeker",
     };
 
-    // Check job existence
+    // Fetch job details
     const jobDetails = await Job.findById(id);
     if (!jobDetails) {
       return res.status(404).json({ message: "Job not found." });
@@ -44,20 +44,19 @@ export const postApplication = async (req, res) => {
       });
     }
 
-    // Resume handling
+    // ✅ Resume Handling
     if (req.files && req.files.resume) {
       const { resume } = req.files;
+
       try {
         const cloudinaryResponse = await cloudinary.uploader.upload(
           resume.tempFilePath,
-          {
-            folder: "Job_Seekers_Resume",
-          }
+          { folder: "Job_Seekers_Resume" }
         );
 
         if (!cloudinaryResponse || cloudinaryResponse.error) {
           return res.status(500).json({
-                message: "Failed to upload resume to cloudinary.",
+            message: "Failed to upload resume to cloudinary.",
           });
         }
 
@@ -67,14 +66,14 @@ export const postApplication = async (req, res) => {
         };
       } catch (error) {
         return res.status(500).json({
-            message: "Failed to upload resume.",
+          message: "Failed to upload resume.",
         });
       }
     } else {
-      // If resume file not present in request, use existing resume
+      // If not uploading new resume, use from user DB
       if (!req.user.resume?.url) {
         return res.status(400).json({
-            message: "Please upload your resume.",
+          message: "Please upload your resume.",
         });
       }
 
@@ -84,30 +83,37 @@ export const postApplication = async (req, res) => {
       };
     }
 
+    // ✅ Employer Info
     const employerInfo = {
       id: jobDetails.postedBy,
       role: "Employer",
     };
 
+    // ✅ Job Info (consistent field names!)
     const jobInfo = {
       jobId: id,
       jobTitle: jobDetails.title,
+      companyName: jobDetails.companyName,
+      location: jobDetails.location,
+      salary: jobDetails.salary,
+      jobType: jobDetails.jobType,
     };
 
+    // ✅ Create application
     const application = await Application.create({
       jobSeekerInfo,
       employerInfo,
       jobInfo,
+      status: "Applied",
     });
 
     res.status(201).json({
-      message: "Application submitted.",
-      data:application,
+      message: "Application submitted successfully.",
+      data: application,
     });
   } catch (error) {
     console.error("Application Error:", error);
     res.status(500).json({
-    
       message: error.message || "Something went wrong.",
     });
   }
@@ -115,41 +121,145 @@ export const postApplication = async (req, res) => {
 
 
 
+
+// export const checkstatus = async (req, res) => {
+//   try {
+//     const fromuserid = req.user._id; 
+//     const touserid = req.params.touserid;
+//     const status = req.params.status;
+
+//     const allowedStatus = ["Apply"]; // Change from "Apply" to your enum value
+//     if (!allowedStatus.includes(status)) {
+//       return res.status(400).json({ message: "Invalid status type" });
+//     }
+
+//     const touser = await User.findById(touserid);
+//     if (!touser) {
+//       return res.status(404).json({ message: "User not found" });
+//     }
+
+//     // ✅ Check if request already sent
+//     const existing = await Connectionreq.findOne({
+//       fromuserid,
+//       touserid,
+//     });
+
+//     if (existing) {
+//       return res.status(409).json({ message: "Request already sent" });
+//     }
+
+//     // ✅ Save new connection request
+//     const request = new Connectionreq({
+//       fromuserid,
+//       touserid,   // ✅ fixed typo from 'touseridd'
+//       status,
+//     });
+
+//     const data = await request.save();
+
+//     res.status(200).json({
+//       message: "Request sent successfully",
+//       data,
+//     });
+//   } catch (error) {
+//     res.status(400).send("Error: " + error.message);
+//   }
+// };
+
+
+export const acceptedorRejected = async (req, res) => {
+  try {
+    const { status, jobid, touserid } = req.params;
+    const allowedStatus = ["Accepted", "Rejected"];
+
+    // Check if status is valid
+    if (!allowedStatus.includes(status)) {
+      return res.status(400).json({ message: "Status not allowed!" });
+    }
+
+    // Validate ObjectIds
+    if (
+      !mongoose.Types.ObjectId.isValid(jobid) ||
+      !mongoose.Types.ObjectId.isValid(touserid)
+    ) {
+      return res
+        .status(400)
+        .json({ message: "Invalid Job ID or User ID." });
+    }
+
+    // Find application
+    const application = await Application.findOne({
+      "jobInfo.jobId": jobid,
+      "jobSeekerInfo.id": touserid,
+    });
+
+    if (!application) {
+      return res.status(404).json({ message: "Application not found" });
+    }
+
+    // Update status
+    application.jobSeekerInfo.status = status;
+    const data = await application.save();
+
+    return res.status(200).json({
+      message: `Application ${status.toLowerCase()} successfully.`,
+      application: data,
+    });
+  } catch (error) {
+    console.error("Error in acceptedOrRejected:", error);
+    res.status(500).json({ message: "Server Error", error: error.message });
+  }
+};
+
+
 export const employerGetAllApplication = async (req, res) => {
   try {
-    const { _id } = req.user;
+    const employerId = req.user._id;
+
     const applications = await Application.find({
-      "employerInfo.id": _id,
-      "deletedBy.employer": false,
-    });
+      "employerInfo.id": employerId,
+      "jobSeekerInfo.status": "Applied"
+    })
+    .populate("jobSeekerInfo.id", "name email")
+    .populate("jobInfo.jobId", "title jobType location companyName salary");
+
     res.status(200).json({
-      data:applications,
+      message: "All applications fetched successfully.",
+      data: applications,
     });
-    
+
   } catch (error) {
-    console.log(error);
+    console.error("Error in employerGetAllApplication:", error);
+    res.status(500).json({
+      message: "Failed to fetch applications.",
+      error: error.message,
+    });
   }
-  }
-;
+};
+
+
 
 
 
 export const jobSeekerGetAllApplication = async (req, res) => {
   try {
-     const { _id } = req.user;
+    const id = req.user._id;
+
     const applications = await Application.find({
-      "jobSeekerInfo.id": _id,
-      "deletedBy.jobseeker": false,
-    });
+      "jobSeekerInfo.id": id,
+    })
+      .populate("jobSeekerInfo.id", "name email") // populate job seeker info
+      .populate("jobInfo.jobId", "title jobType location companyName salary"); // correct select syntax
+
     res.status(200).json({
       success: true,
       applications,
     });
   } catch (error) {
-    console.log(error)
+    console.log(error);
+    res.status(500).json({ message: "Server Error" });
   }
-}
-;
+};
 
 
 export const deleteApplication = async (req, res) => {

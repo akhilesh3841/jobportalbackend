@@ -1,11 +1,12 @@
-
 import mongoose from "mongoose";
 import validator from "validator";
+
 const applicationSchema = new mongoose.Schema({
   jobSeekerInfo: {
     id: {
       type: mongoose.Schema.Types.ObjectId,
       required: true,
+      ref: "User",
     },
     name: {
       type: String,
@@ -28,16 +29,18 @@ const applicationSchema = new mongoose.Schema({
       public_id: String,
       url: String,
     },
-    coverletter: {
-      type: String,
-      required: true,
-    },
     role: {
       type: String,
       enum: ["Job Seeker"],
       required: true,
     },
+    status: {
+      type: String,
+      enum: ["Applied", "Accepted", "Rejected"],
+      default: "Applied",
+    },
   },
+
   employerInfo: {
     id: {
       type: mongoose.Schema.Types.ObjectId,
@@ -50,16 +53,35 @@ const applicationSchema = new mongoose.Schema({
       required: true,
     },
   },
+
   jobInfo: {
     jobId: {
       type: mongoose.Schema.Types.ObjectId,
+      ref: "Job",
       required: true,
     },
     jobTitle: {
       type: String,
       required: true,
     },
+    companyName: {
+      type: String,
+      required: true,
+    },
+    location: {
+      type: String,
+      required: true,
+    },
+    salary: {
+      type: String,
+      required: true,
+    },
+    jobType: {
+      type: String,
+      required: true,
+    },
   },
+
   deletedBy: {
     jobSeeker: {
       type: Boolean,

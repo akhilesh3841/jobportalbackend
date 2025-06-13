@@ -2,6 +2,11 @@
 import {User} from "../models/userSchema.js"
 import { Job } from "../models/jobSchema.js";
 
+import dotenv from "dotenv";
+dotenv.config(); // Load environment variables from .env file
+
+
+
 export const postJob = async (req, res) => {
   try {
     const {
@@ -20,6 +25,7 @@ export const postJob = async (req, res) => {
       jobNiche,
     } = req.body;
 
+    // Required fields validation
     if (
       !title ||
       !jobType ||
@@ -33,6 +39,7 @@ export const postJob = async (req, res) => {
       return res.status(400).json({ message: "Please provide full job details." });
     }
 
+    // Website title/url validation
     if (
       (personalWebsiteTitle && !personalWebsiteUrl) ||
       (!personalWebsiteTitle && personalWebsiteUrl)
@@ -44,6 +51,21 @@ export const postJob = async (req, res) => {
 
     const postedBy = req.user._id;
 
+    // Check if a job already exists with the same title, company, and location
+    const existingJob = await Job.findOne({
+      title,
+      companyName,
+      location,
+      postedBy,  // optionally check postedBy if you want user-specific uniqueness
+    });
+
+    if (existingJob) {
+      return res.status(409).json({
+        message: "You have already posted a similar job.",
+      });
+    }
+
+    // If not existing, create the job
     const job = await Job.create({
       title,
       jobType,
@@ -65,15 +87,15 @@ export const postJob = async (req, res) => {
 
     res.status(201).json({
       message: "Job posted successfully.",
-      job,
+      data: job,
     });
-
   } catch (error) {
     res.status(500).json({
       message: error.message,
     });
   }
 };
+
 
 
 

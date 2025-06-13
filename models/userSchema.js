@@ -2,6 +2,11 @@ import mongoose from "mongoose";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import validator from "validator";
+import dotenv from "dotenv";
+dotenv.config(); // Load environment variables from .env file
+
+
+
 
 const { Schema } = mongoose;
 
@@ -38,14 +43,13 @@ const userSchema = new Schema({
         public_id: String,
         url: String,
     },
-    coverletter: {
-        type: String,
-    },
     role: {
         type: String,
         required: true,
         enum: ["Job Seeker", "Employer"],
     },
+    resetPasswordToken:String,
+    resetPasswordExpires:Date,
     createdAt: {
         type: Date,
         default: Date.now,
