@@ -64,10 +64,12 @@ export const register = async (req, res) => {
     const saveuser = await userData.save();
     const token = await saveuser.getJWTToken();
 
-    res.cookie("token", token, {
-      expires: new Date(Date.now() + 8 * 360000000),
-      httpOnly: true,
-    });
+  res.cookie("token", token, {
+  expires: new Date(Date.now() + 8 * 360000000),
+  httpOnly: true,
+  secure: true,
+  sameSite: "None"
+});
 
     res.status(201).json({
       message: "User registered successfully.",
@@ -123,12 +125,12 @@ export const login = async (req, res) => {
     const token = await user.getJWTToken();
 
     // Step 6: Set cookie
-    res.cookie("token", token, {
-      expires: new Date(Date.now() + 8 * 3600000), // 8 hours
-      httpOnly: true,
-      secure: true,
-      sameSite: "None",
-    });
+  res.cookie("token", token, {
+  httpOnly: true,
+  secure: true,
+  sameSite: "None",
+  expires: new Date(Date.now() + 8 * 3600000)
+});
 
     // Step 7: Send success response
     res.status(200).json({
