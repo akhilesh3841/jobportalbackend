@@ -12,7 +12,7 @@ import applicationRouter from './routes/applicationRouter.js'
 import dotenv from "dotenv";
 dotenv.config(); // Load environment variables from .env file
 
-
+app.set("trust proxy", 1); 
 
 config({ path: "./config/.env" });
 
